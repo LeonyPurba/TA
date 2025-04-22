@@ -3,14 +3,6 @@ I = imread('D:\TA\Edge Sharpness\Profile intensity\Mask\BIRADS_2\bus_0191-r_mask
 %I = imread('D:\TA\Edge Sharpness\Profile intensity\Mask\BIRADS_2\bus_0592-l_mask.png'); 
 %I = imread('D:\TA\Edge Sharpness\Profile intensity\Dataset yang dipakai\BIRADS_2\bus_0191-r.png');  % pastikan grayscale
 
-% Store the final x and y positions
-finalX = x;
-finalY = y;
-
-% Scale the coordinates to make the object 2x bigger
-xscaled = (finalX - mean(finalX)) * 1 + mean(finalX);
-yscaled = (finalY - mean(finalY)) * 1 + mean(finalY);
-
 
 % Tentukan pusat kontur (dari hasil edge detection/mask)
 xscaled_center = 190;  % ganti sesuai data kamu
