@@ -1,15 +1,15 @@
 % Load gambar grayscale
-I = imread('D:\TA\Edge Sharpness\Profile intensity\Mask\BIRADS_2\bus_0191-r_mask.png'); 
+%I = imread('D:\TA\Edge Sharpness\Profile intensity\Mask\BIRADS_2\bus_0191-r_mask.png'); 
 %I = imread('D:\TA\Edge Sharpness\Profile intensity\Mask\BIRADS_2\bus_0592-l_mask.png'); 
-%I = imread('D:\TA\Edge Sharpness\Profile intensity\Dataset yang dipakai\BIRADS_2\bus_0191-r.png');  % pastikan grayscale
+I = imread('D:\TA\Edge Sharpness\Profile intensity\Dataset yang dipakai\BIRADS_2\bus_0191-r.png');  % pastikan grayscale
 
 
 % Tentukan pusat kontur (dari hasil edge detection/mask)
-xscaled_center = 190;  % ganti sesuai data kamu
-yscaled_center = 190;
+xscaled_center = 142;  % ganti sesuai data kamu
+yscaled_center = 93;
 
 % Parameter
-r = 135;  % panjang garis profil
+r = 60;  % panjang garis profil
 num_lines = 30;
 theta = linspace(0, 2*pi, num_lines + 1);  % +1 untuk 2pi
 
@@ -17,7 +17,7 @@ theta = linspace(0, 2*pi, num_lines + 1);  % +1 untuk 2pi
 profiles = cell(1, num_lines);
 
 % Tampilkan gambar
-figure;
+figure(19);
 imshow(I); hold on;
 title('Overlay Garis Profil Intensitas Radial');
 plot(xscaled_center, yscaled_center, 'ro', 'MarkerSize', 8, 'LineWidth', 2); % titik pusat
@@ -53,8 +53,16 @@ title('Semua Profil Intensitas');
 grid on;
 
 % Contoh: tampilkan 1 profil intensitas
-figure;
-plot(profiles{1}, 'b', 'LineWidth', 2);
+figure(20);
+subplot(3,1,1);
+plot(profiles{28}, 'b', 'LineWidth', 2);
+axis([0 60 20 100])
+subplot(3,1,2);
+plot(profiles{29}, 'b', 'LineWidth', 2);
+axis([0 60 20 100])
+subplot(3,1,3);
+plot(profiles{3}, 'b', 'LineWidth', 2);
+axis([0 60 20 100])
 xlabel('Jarak Sepanjang Garis');
 ylabel('Intensitas');
 title('Contoh Profil Intensitas (garis ke-1)');
