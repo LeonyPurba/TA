@@ -224,7 +224,8 @@ function ellipse_improve()
        %plot standar deviasi of fft
        figure;
        plot(std_diff);
-       title (standar deviasi dari )
+       title (standar deviasi dari r1-r2)
+       
 
 
        %nyoba pake root mean squaree
