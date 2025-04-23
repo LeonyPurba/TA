@@ -28,6 +28,7 @@ for i = 1:num_lines
     x_end = xscaled_center + r * cos(theta(i));
     y_end = yscaled_center + r * sin(theta(i));
     
+    
     % Gambar garis di gambar
     line([xscaled_center x_end], [yscaled_center y_end], 'Color', 'g', 'LineWidth', 0.5);
     
