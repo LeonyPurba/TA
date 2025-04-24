@@ -211,21 +211,20 @@ function ellipse_improve()
         
         % Plot differences for the best fitting ellipse
         figure;
-        plot(r1-r2);
-        title('r1-r2 result');
+        plot(r2-r1);
+        title('r2-r1 result');
+        
         %plot(r2-r1);
         %title('Difference between r1 and r2 (r1-r2)');
         %title('Difference between r2 and r1 (r2-r1)');
 
-
        %percobaan menggunakan standar deviasi
-       std_diff = std(r2 - r1);
+       %std_diff = std(r2 - r1);
 
-       %plot standar deviasi of fft
-       figure;
-       plot(std_diff);
-       title (standar deviasi dari r1-r2)
-       
+       %plot standar deviasi 
+       %figure;
+       %plot(std_diff);
+       %title (standar deviasi dari r1-r2)
 
 
        %nyoba pake root mean squaree

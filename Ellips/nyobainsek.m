@@ -1,6 +1,6 @@
 % === STEP 1: Buka file .fig ===
+%fig = openfig('C:\Users\Leony\Downloads\BIRADS2Nyobain.fig'); 
 fig = openfig('C:\Users\Leony\Downloads\BIRADS5Nyobain.fig'); 
-%fig = openfig('D:\TA\Ellips\BIRADS 2\bus_0191-r_maskdif.fig'); 
 ax = gca;  % ambil axis aktif
 lines = findall(ax, 'Type', 'Line');  % ambil semua data line di plot
 
@@ -28,4 +28,5 @@ energy_high = sum(magnitude(low_cutoff:end).^2);
 energy_total = sum(magnitude.^2);
 ratio = energy_high / energy_total;
 
+%=== STEP 6 
 fprintf('Rasio energi frekuensi tinggi: %.4f\n', ratio);
