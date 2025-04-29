@@ -1,105 +1,8 @@
-function intensity_profile_gui()
-    % Global variables
-    global origFolder gtFolder origFiles gtFiles hOrigList hGTList selectedOrig selectedGT;
+Ori_image  = 'D:\TA\Edge Sharpness\Profile intensity\Dataset yang dipakai\BIRADS_2\bus_0191-r.png';
+Mask_image = 'D:\repository\TA\breast_cancer\Edge Sharpness\Profile intensity\Resize\Resized\BIRADS_2\resized_mask_0191-r.png';
 
-    % Create figure
-    fig = figure('Name', 'Radial Intensity Profile Extractor', 'Position', [100, 100, 800, 500]);
-
-    % Load Original Image Button
-    uicontrol('Style', 'pushbutton', 'String', 'Load Original Images', ...
-        'Position', [50, 450, 150, 30], 'Callback', @loadOriginalFolder);
-
-    % Load Ground Truth Button
-    uicontrol('Style', 'pushbutton', 'String', 'Load Ground Truth', ...
-        'Position', [250, 450, 150, 30], 'Callback', @loadGTFolder);
-
-    % Overlay Button
-    uicontrol('Style', 'pushbutton', 'String', 'Overlay', ...
-        'Position', [650, 450, 100, 30], 'Callback', @runOverlay);
-
-    % Listbox for Original Images
-    uicontrol('Style', 'text', 'String', 'Original Images:', ...
-        'Position', [50, 420, 150, 20]);
-    hOrigList = uicontrol('Style', 'listbox', 'Position', [50, 200, 150, 220], ...
-        'Callback', @selectOrigFile);
-
-    % Listbox for Ground Truth
-    uicontrol('Style', 'text', 'String', 'Ground Truth Masks:', ...
-        'Position', [250, 420, 150, 20]);
-    hGTList = uicontrol('Style', 'listbox', 'Position', [250, 200, 150, 220], ...
-        'Callback', @selectGTFile);
-
-    % Axes for Preview
-    axes('Units', 'pixels', 'Position', [450, 200, 300, 200]);
-    title('Preview');
-
-    % Initialize
-    selectedOrig = '';
-    selectedGT = '';
-end
-
-function loadOriginalFolder(~, ~)
-    global origFolder origFiles hOrigList;
-    origFolder = uigetdir('', 'Select Folder with Original Images');
-    if origFolder ~= 0
-        origFiles = dir(fullfile(origFolder, '*.png'));
-        filenames = {origFiles.name};
-        set(hOrigList, 'String', filenames);
-    end
-end
-
-function loadGTFolder(~, ~)
-    global gtFolder gtFiles hGTList;
-    gtFolder = uigetdir('', 'Select Folder with Ground Truth Masks');
-    if gtFolder ~= 0
-        gtFiles = dir(fullfile(gtFolder, '*.png'));
-        filenames = {gtFiles.name};
-        set(hGTList, 'String', filenames);
-    end
-end
-
-function selectOrigFile(src, ~)
-    global origFolder origFiles selectedOrig;
-    idx = src.Value;
-    if isempty(origFiles)
-        return;
-    end
-    selectedOrig = fullfile(origFolder, origFiles(idx).name);
-    showPreview(selectedOrig);
-end
-
-function selectGTFile(src, ~)
-    global gtFolder gtFiles selectedGT;
-    idx = src.Value;
-    if isempty(gtFiles)
-        return;
-    end
-    selectedGT = fullfile(gtFolder, gtFiles(idx).name);
-    showPreview(selectedGT);
-end
-
-function showPreview(imgPath)
-    img = imread(imgPath);
-    if size(img,3) > 1
-        img = rgb2gray(img);
-    end
-    axesObjs = findall(gcf, 'type', 'axes');
-    axes(axesObjs(1));
-    imshow(img, []);
-end
-
-function runOverlay(~, ~)
-    global selectedOrig selectedGT;
-
-    if isempty(selectedOrig) || isempty(selectedGT)
-        errordlg('Please select both an original image and a ground truth mask.', 'Selection Error');
-        return;
-    end
-
-    % ------------ Algoritma Asli Kamu Dimulai --------------
-    
-    % Load mask binary (GROUND TRUTH) untuk cari bounding box
-    mask = imread(selectedGT);
+% Load mask binary (GROUND TRUTH) untuk cari bounding box
+    mask = imread(Mask_image);
     if size(mask,3) > 1
         mask = mask(:,:,1); % pastikan grayscale
     end
@@ -110,7 +13,7 @@ function runOverlay(~, ~)
     end
 
     % Load gambar asli grayscale
-    I = imread(selectedOrig);
+    I = imread(Ori_image);
     if size(I,3) > 1
         I = rgb2gray(I);
     end
@@ -128,22 +31,23 @@ function runOverlay(~, ~)
     fprintf('Centroid pada gambar penuh: [%.2f, %.2f]\n', centroid);
 
     % Set Parameter Garis Radial
-    r = 60; % panjang garis profil
+    r = 45; % panjang garis profil
     num_lines = 30; % jumlah garis
     theta = linspace(0, 2*pi, num_lines + 1);
-    theta = theta(1:end-1); % hapus duplikat
-    selected_indices = [12, 22, 29];
-    colors = {'m', 'b', 'r'};
+    theta = theta(1:end-1); 
+    selected_indices = [2, 18, 28]; %masukin garis yg mau di ekstrak
+    colors = {'m', 'c', 'b'};
 
     % Inisialisasi Profil
     profiles = cell(1, num_lines);
+    mask_profiles = cell (1, num_lines);
 
     % Plot Overlay di Gambar Asli
     figure;
     imshow(I); hold on;
     title('Overlay Garis Profil Intensitas Radial');
 
-    % Tambahkan overlay dari mask
+    % Overlay dari mask
     h_mask = imshow(cat(3, zeros(size(mask)), mask, zeros(size(mask))));
     set(h_mask, 'AlphaData', 0.3 * double(mask));
 
@@ -160,7 +64,7 @@ function runOverlay(~, ~)
 
         idx_in_selected = find(selected_indices == i);
         if ~isempty(idx_in_selected)
-            color = colors{idx_in_selected};
+            color = colors{mod(idx_in_selected - 1, numel(colors)) + 1};
             lw = 2.5;
         else
             color = 'g';
@@ -173,9 +77,11 @@ function runOverlay(~, ~)
             text(x_end, y_end, sprintf('%d', i), 'Color', 'w', 'FontSize', 7, 'HorizontalAlignment', 'center');
         end
 
-        profiles{i} = improfile(I, [centroid(1), x_end], [centroid(2), y_end], 100);
+        profiles{i} = improfile(I, [centroid(1), x_end], [centroid(2), y_end], 150);
+        mask_profiles{i} = improfile(double(mask), [centroid(1), x_end], [centroid(2), y_end], 150);
     end
     hold off;
+
 
     % Plot Semua Profil Intensitas
     figure;
@@ -195,13 +101,22 @@ function runOverlay(~, ~)
     figure;
     for i = 1:length(selected_indices)
         subplot(3,1,i);
+        hold on;
         idx = selected_indices(i);
         plot(profiles{idx}, colors{i}, 'LineWidth', 2);
+
+        %plot profil dari masking
+        if ~isempty(mask_profiles{idx})
+            plot(mask_profiles{idx} * max(profiles{idx}), 'g', 'LineWidth', 2);
+        end
+
         xlabel('Jarak Sepanjang Garis');
         ylabel('Intensitas');
         title(sprintf('Profil Intensitas Garis %d', idx));
-        axis([0 length(profiles{idx}) 20 100]);
+        axis([0 150 0 130]);
+        legend ('Gambar Asli', 'Masking GT');
+        grid on;
+        hold off;
     end
 
-    % ------------ Algoritma Asli Kamu Selesai --------------
-end
+
