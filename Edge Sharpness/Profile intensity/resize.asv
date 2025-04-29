@@ -1,0 +1,99 @@
+function resize_images_gui()
+    % Buat figure GUI
+    fig = figure('Name', 'Image Resizer 256x256', 'Position', [100 100 600 400]);
+    
+    % Tombol Select Folder
+    uicontrol('Style', 'pushbutton', 'String', 'Select Folder', ...
+              'Position', [50 340 120 30], 'Callback', @selectFolderCallback);
+
+    % Tombol Resize Images
+    uicontrol('Style', 'pushbutton', 'String', 'Resize Images', ...
+              'Position', [430 340 120 30], 'Callback', @resizeImagesCallback);
+
+    % Listbox untuk original sizes
+    uicontrol('Style', 'text', 'Position', [50 310 120 20], 'String', 'Original Sizes:');
+    hOriginal = uicontrol('Style', 'listbox', 'Position', [50 100 200 200], 'Max', 2);
+
+    % Listbox untuk resized sizes
+    uicontrol('Style', 'text', 'Position', [350 310 120 20], 'String', 'Resized Sizes:');
+    hResized = uicontrol('Style', 'listbox', 'Position', [350 100 200 200], 'Max', 2);
+
+    % Input New Width dan Height (default 256)
+    uicontrol('Style', 'text', 'Position', [50 60 60 20], 'String', 'New Width:');
+    hWidth = uicontrol('Style', 'edit', 'String', '256', 'Position', [120 60 60 20]);
+
+    uicontrol('Style', 'text', 'Position', [50 30 60 20], 'String', 'New Height:');
+    hHeight = uicontrol('Style', 'edit', 'String', '256', 'Position', [120 30 60 20]);
+
+    % Variable global
+    imgFolder = '';
+    imgFiles = {};
+    
+    % --- Callback untuk Select Folder ---
+    function selectFolderCallback(~,~)
+        imgFolder = uigetdir;
+        if imgFolder ~= 0
+            imgFiles = dir(fullfile(imgFolder, '*.png'));
+            if isempty(imgFiles)
+                errordlg('Tidak ada file PNG dalam folder terpilih.');
+                return;
+            end
+            
+            % Tampilkan ukuran asli
+            originalSizes = {};
+            for i = 1:length(imgFiles)
+                info = imfinfo(fullfile(imgFolder, imgFiles(i).name));
+                originalSizes{end+1} = sprintf('%s: %dx%d', imgFiles(i).name, info.Width, info.Height);
+            end
+            set(hOriginal, 'String', originalSizes);
+            
+            % Kosongkan resized listbox
+            set(hResized, 'String', {});
+        end
+    end
+
+    % --- Callback untuk Resize Images ---
+    function resizeImagesCallback(~,~)
+        if isempty(imgFiles)
+            errordlg('Pilih folder berisi gambar terlebih dahulu.');
+            return;
+        end
+        
+        % Ambil nilai width dan height
+        newWidth = str2double(get(hWidth, 'String'));
+        newHeight = str2double(get(hHeight, 'String'));
+        
+        if isnan(newWidth) || isnan(newHeight)
+            errordlg('Masukkan nilai Width dan Height yang valid.');
+            return;
+        end
+        
+        % Tentukan folder output
+        outputFolder = fullfile(imgFolder, 'Resized_Images');
+        if ~exist(outputFolder, 'dir')
+            mkdir(outputFolder);
+        end
+        
+        % Parallel processing
+        parfor i = 1:length(imgFiles)
+            filename = fullfile(imgFolder, imgFiles(i).name);
+            img = imread(filename);
+            img_resized = imresize(img, [newHeight newWidth]);
+            
+            [~, name, ext] = fileparts(filename);
+            output_name = fullfile(outputFolder, ['resized_' name ext]);
+            imwrite(img_resized, output_name);
+        end
+        
+        % Tampilkan resized sizes
+        resizedFiles = dir(fullfile(outputFolder, '*.png'));
+        resizedSizes = {};
+        for i = 1:length(resizedFiles)
+            info = imfinfo(fullfile(outputFolder, resizedFiles(i).name));
+            resizedSizes{end+1} = sprintf('%s: %dx%d', resizedFiles(i).name, info.Width, info.Height);
+        end
+        set(hResized, 'String', resizedSizes);
+        
+        msgbox('Semua gambar berhasil di-resize dan disimpan!');
+    end
+end
