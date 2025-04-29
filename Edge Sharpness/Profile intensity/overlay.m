@@ -1,110 +1,214 @@
-% Load gambar grayscale
-%I = imread('D:\TA\Edge Sharpness\Profile intensity\Mask\BIRADS_2\bus_0191-r_mask.png'); 
-%I = imread('D:\TA\Edge Sharpness\Profile intensity\Mask\BIRADS_2\bus_0592-l_mask.png'); 
-I = imread('D:\TA\Edge Sharpness\Profile intensity\Dataset yang dipakai\BIRADS_2\bus_0191-r.png');  % pastikan grayscale
+function intensity_profile_gui()
+    % Global variables
+    global origFolder gtFolder origFiles gtFiles hOrigList hGTList selectedOrig selectedGT;
 
-selected_indices = [12, 22, 29];  % indeks garis yang dipilih untuk ditampilkan di subplot
-colors = {'m' 'b' 'r'};      % warna untuk masing-masing garis terpilih
+    % Create figure
+    fig = figure('Name', 'Radial Intensity Profile Extractor', 'Position', [100, 100, 800, 500]);
 
-% Tentukan pusat kontur (dari hasil edge detection/mask)
-xscaled_center = 142;  % ganti sesuai data kamu
-yscaled_center = 93;
+    % Load Original Image Button
+    uicontrol('Style', 'pushbutton', 'String', 'Load Original Images', ...
+        'Position', [50, 450, 150, 30], 'Callback', @loadOriginalFolder);
 
-% Parameter
-r = 60;  % panjang garis profil
-num_lines = 30;
-theta = linspace(0, 2*pi, num_lines + 1);  % +1 untuk 2pi
+    % Load Ground Truth Button
+    uicontrol('Style', 'pushbutton', 'String', 'Load Ground Truth', ...
+        'Position', [250, 450, 150, 30], 'Callback', @loadGTFolder);
 
-% Inisialisasi penyimpanan intensitas
-profiles = cell(1, num_lines);
+    % Overlay Button
+    uicontrol('Style', 'pushbutton', 'String', 'Overlay', ...
+        'Position', [650, 450, 100, 30], 'Callback', @runOverlay);
 
-% Tampilkan gambar
-figure(19);
-imshow(I); hold on;
-title('Overlay Garis Profil Intensitas Radial');
-plot(xscaled_center, yscaled_center, 'ro', 'MarkerSize', 8, 'LineWidth', 2); % titik pusat
+    % Listbox for Original Images
+    uicontrol('Style', 'text', 'String', 'Original Images:', ...
+        'Position', [50, 420, 150, 20]);
+    hOrigList = uicontrol('Style', 'listbox', 'Position', [50, 200, 150, 220], ...
+        'Callback', @selectOrigFile);
 
-for i = 1:num_lines
-    % Hitung titik akhir garis
-    x_end = xscaled_center + r * cos(theta(i));
-    y_end = yscaled_center + r * sin(theta(i));
+    % Listbox for Ground Truth
+    uicontrol('Style', 'text', 'String', 'Ground Truth Masks:', ...
+        'Position', [250, 420, 150, 20]);
+    hGTList = uicontrol('Style', 'listbox', 'Position', [250, 200, 150, 220], ...
+        'Callback', @selectGTFile);
+
+    % Axes for Preview
+    axes('Units', 'pixels', 'Position', [450, 200, 300, 200]);
+    title('Preview');
+
+    % Initialize
+    selectedOrig = '';
+    selectedGT = '';
+end
+
+function loadOriginalFolder(~, ~)
+    global origFolder origFiles hOrigList;
+    origFolder = uigetdir('', 'Select Folder with Original Images');
+    if origFolder ~= 0
+        origFiles = dir(fullfile(origFolder, '**', '*.png')); % <<< ini perubahannya (recursive search)
+        filenames = {origFiles.name};
+        set(hOrigList, 'String', filenames);
+    end
+end
+
+
+function loadGTFolder(~, ~)
+    global gtFolder gtFiles hGTList;
+    gtFolder = uigetdir('', 'Select Folder with Ground Truth Masks');
+    if gtFolder ~= 0
+        gtFiles = dir(fullfile(gtFolder, '*.png'));
+        filenames = {gtFiles.name};
+        set(hGTList, 'String', filenames);
+    end
+end
+
+function selectOrigFile(src, ~)
+    global origFolder origFiles selectedOrig;
+    idx = src.Value;
+    if isempty(origFiles)
+        return;
+    end
+    selectedOrig = fullfile(origFolder, origFiles(idx).name);
+    showPreview(selectedOrig);
+end
+
+function selectGTFile(src, ~)
+    global gtFolder gtFiles selectedGT;
+    idx = src.Value;
+    if isempty(gtFiles)
+        return;
+    end
+    selectedGT = fullfile(gtFolder, gtFiles(idx).name);
+    showPreview(selectedGT);
+end
+
+function showPreview(imgPath)
+    img = imread(imgPath);
+    if size(img,3) > 1
+        img = rgb2gray(img);
+    end
+    axesObjs = findall(gcf, 'type', 'axes');
+    axes(axesObjs(1));
+    imshow(img, []);
+end
+
+function runOverlay(~, ~)
+    global selectedOrig selectedGT;
+
+    if isempty(selectedOrig) || isempty(selectedGT)
+        errordlg('Please select both an original image and a ground truth mask.', 'Selection Error');
+        return;
+    end
+
+    % ------------ Algoritma Profil Intensity Extraction--------------
     
-    % Cek apakah garis ini salah satu yang dipilih
-    idx_in_selected = find(selected_indices == i);
-    if ~isempty(idx_in_selected)
-        color = colors{idx_in_selected};  % warna khusus
-        lw = 2.5;
-    else
-        color = 'g';  % default: hijau
-        lw = 0.5;
+    % Load mask binary (GROUND TRUTH) untuk cari bounding box
+    mask = imread(selectedGT);
+    if size(mask,3) > 1
+        mask = mask(:,:,1); % pastikan grayscale
     end
 
-    % Gambar garis
-    line([xscaled_center x_end], [yscaled_center y_end], 'Color', color, 'LineWidth', lw);
-
-    % Tambahkan label nomor garis
-    if mod(i, 1) == 0 || ~isempty(idx_in_selected)
-        text(x_end, y_end, sprintf('%d', i), 'Color', 'w', 'FontSize', 7, 'HorizontalAlignment', 'center');
+    % Konversi ke binary jika belum logical
+    if ~islogical(mask)
+        mask = imbinarize(mask);
     end
 
-    % Simpan profil intensitas
-    profiles{i} = improfile(I, [xscaled_center x_end], [yscaled_center y_end]);
+    % Load gambar asli grayscale
+    I = imread(selectedOrig);
+    if size(I,3) > 1
+        I = rgb2gray(I);
+    end
+
+    % Pastikan ukuran mask dan gambar asli sama
+    if ~isequal(size(mask), size(I))
+        mask = imresize(mask, size(I));
+        fprintf('Mask diubah ukurannya agar sesuai dengan gambar asli\n');
+    end
+
+    % Cari Centroid dari Mask
+    props_mask = regionprops(mask, 'Centroid', 'Area');
+    [~, idx] = max([props_mask.Area]);
+    centroid = props_mask(idx).Centroid;
+    fprintf('Centroid pada gambar penuh: [%.2f, %.2f]\n', centroid);
+
+    % Set Parameter Garis Radial
+    r = 40; % panjang garis profil
+    num_lines = 30; % jumlah garis
+    theta = linspace(0, 2*pi, num_lines + 1);
+    theta = theta(1:end-1); % hapus duplikat
+    selected_indices = [12, 22, 29];
+    colors = {'m', 'b', 'r'};
+
+    % Inisialisasi Profil
+    profiles = cell(1, num_lines);
+
+    % Plot Overlay di Gambar Asli
+    figure;
+    imshow(I); hold on;
+    title('Overlay Garis Profil Intensitas Radial');
+
+    % Tambahkan overlay dari mask
+    h_mask = imshow(cat(3, zeros(size(mask)), mask, zeros(size(mask))));
+    set(h_mask, 'AlphaData', 0.3 * double(mask));
+
+    % Plot centroid
+    plot(centroid(1), centroid(2), 'ro', 'MarkerSize', 8, 'LineWidth', 2);
+
+    % Gambar garis radial
+    for i = 1:num_lines
+        x_end = centroid(1) + r * cos(theta(i));
+        y_end = centroid(2) + r * sin(theta(i));
+
+        x_end = max(1, min(size(I,2), x_end));
+        y_end = max(1, min(size(I,1), y_end));
+
+        idx_in_selected = find(selected_indices == i);
+        if ~isempty(idx_in_selected)
+            color = colors{idx_in_selected};
+            lw = 2.5;
+        else
+            color = 'g';
+            lw = 0.5;
+        end
+
+        line([centroid(1), x_end], [centroid(2), y_end], 'Color', color, 'LineWidth', lw);
+
+        if mod(i, 5) == 0 || ~isempty(idx_in_selected)
+            text(x_end, y_end, sprintf('%d', i), 'Color', 'w', 'FontSize', 7, 'HorizontalAlignment', 'center');
+        end
+
+        profiles{i} = improfile(I, [centroid(1), x_end], [centroid(2), y_end], 100);
+    end
+    hold off;
+
+    % Plot Semua Profil Intensitas
+    figure;
+    hold on;
+    for i = 1:num_lines
+        if ~isempty(profiles{i})
+            plot(profiles{i}, 'Color', [0, 0.5, 1, 0.2]); % transparan
+        end
+    end
+    xlabel('Jarak Sepanjang Garis');
+    ylabel('Intensitas');
+    title('Semua Profil Intensitas Radial');
+    grid on;
+    hold off;
+
+    % Plot 3 Profil Terpilih
+    figure;
+    for i = 1:length(selected_indices)
+        subplot(3,1,i);
+        idx = selected_indices(i);
+        plot(profiles{idx}, colors{i}, 'LineWidth', 2);
+        xlabel('Jarak Sepanjang Garis');
+        ylabel('Intensitas');
+        title(sprintf('Profil Intensitas Garis %d', idx));
+        axis([0 length(profiles{idx}) 20 100]);
+    end
+
+  % Untuk 1 gambar:
+  profile_data.theta = theta;        % 1xN array, semua sudut 
+  profile_data.rho = linspace(0, r, 100);  % 1x100 array (100 titik sampling)
+  profile_data.intensity = profiles; % 1xN cell, tiap cell: 100x1 array (profil intensitas tiap garis)
+  
+ save('namafile.mat', 'profile_data');
+
 end
-
-hold off;
-
-% Plot semua profil intensitas dari 180 garis
-figure;
-hold on;
-for i = 1:num_lines
-    if ~isempty(profiles{i})
-        plot(profiles{i}, 'Color', [0, 0.5, 1, 0.2]);  % warna biru transparan
-    end
-end
-hold off;
-
-xlabel('Jarak Sepanjang Garis');
-ylabel('Intensitas');
-title('Semua Profil Intensitas');
-grid on;
-
-% Contoh: tampilkan 1 profil intensitas
-figure(20);
-subplot(3,1,1);
-plot(profiles{1}, 'm', 'LineWidth', 2);
-xlabel('Jarak Sepanjang Garis');
-ylabel('Intensitas');
-%title('Contoh Profil Intensitas (garis ke-1)');
-axis([0 60 20 100])
-subplot(3,1,2);
-plot(profiles{2}, 'b', 'LineWidth', 2);
-xlabel('Jarak Sepanjang Garis');
-ylabel('Intensitas');
-%title('Contoh Profil Intensitas (garis ke-2)');
-axis([0 60 20 100])
-subplot(3,1,3);
-plot(profiles{3}, 'r', 'LineWidth', 2);
-xlabel('Jarak Sepanjang Garis');
-ylabel('Intensitas');
-%title('Contoh Profil Intensitas (garis ke-3)');
-axis([0 60 20 100])
-
-
-
-% Gabungkan semua nilai intensitas ke dalam satu array
-%all_intensities = [];
-
-%for i = 1:num_lines
-    %if ~isempty(profiles{i})
-        %all_intensities = [all_intensities; profiles{i}];  % gabung vertikal
-    %end
-%end
-
-% Plot histogram
-%figure;
-%histogram(all_intensities, 50);  % 50 bins (bisa disesuaikan)
-%xlabel('Nilai Intensitas');
-%ylabel('Frekuensi');
-%title('Histogram Intensitas dari Semua Profil Radial');
-%grid on;
-
