@@ -35,7 +35,7 @@ Mask_image = '.\Resize\Resized\BIRADS_2\resized_mask_0191-r.png';
     num_lines = 30; % jumlah garis
     theta = linspace(0, 2*pi, num_lines + 1);
     theta = theta(1:end-1); 
-    selected_indices = [2, 18, 28]; %masukin garis yg mau di ekstrak
+    selected_indices = [3, 15, 23]; %masukin garis yg mau di ekstrak
     colors = {'m', 'c', 'b'};
 
     % Inisialisasi Profil
@@ -123,24 +123,61 @@ Mask_image = '.\Resize\Resized\BIRADS_2\resized_mask_0191-r.png';
 
     figure(4);
 	clf;
+
     for i = 1:length(selected_indices)
         subplot(3,1,i);
         hold on;
+
         idx = selected_indices(i);
 		
         plot(profiles{idx}(edge_point(idx)-20:edge_point(idx)+20), colors{i}, 'LineWidth', 2);
 
-        % %plot profil dari masking
-        % if ~isempty(mask_profiles{idx})
-            % plot(mask_profiles{idx} * max(profiles{idx}), 'g', 'LineWidth', 2);
-        % end
-
-        % xlabel('Jarak Sepanjang Garis');
-        % ylabel('Intensitas');
-        % title(sprintf('Profil Intensitas Garis %d', idx));
-
         axis([0 40 0 130]);
         legend ('Gambar Asli', 'Masking GT');
+        grid on;
+        hold off;
+    end
+
+    figure(5); 
+    clf;
+
+    slopes = zeros(1, length(selected_indices)); % Menyimpan slope tiap garis
+    
+    for i = 1:length(selected_indices)
+        subplot(3,1,i);
+        hold on;
+        
+        idx = selected_indices(i);
+        edge_idx = edge_point(idx);
+        
+        % Ambil profil sekitar edge
+        x_range = 0:40; % 41 titik (sama seperti Figure 4)
+        y_range = profiles{idx}(edge_idx-20 : edge_idx+20);
+        
+        % Regressi Linear (kemiringan)
+        p = polyfit(x_range, y_range', 1); % y = mx + c
+        y_fit = polyval(p, x_range);
+        
+        % Simpan slope
+        slopes(i) = p(1);
+
+        % Plot kurva asli
+        plot(x_range, y_range, colors{i}, 'LineWidth', 2);
+
+        % Plot hasil regresi   
+        plot(x_range, y_fit,  'k--', 'LineWidth', 1.5);
+
+  
+        % Tampilkan slope di plot
+        text(2, max(y_range)*0.9, sprintf('Slope = %.2f', p(1)), ...
+            'FontSize', 10, 'Color', 'k', 'BackgroundColor', 'w');
+        
+        xlabel('Pixel dari Edge (0 = -20 pixel)');
+        ylabel('Intensitas');
+        
+        title(sprintf('Kemiringan Sekitar Edge (Garis %d)', idx));
+        axis([0 40 0 130]); % Tetap seperti Figure 4
+        legend('Gambar Asli', 'Regresi Linear');
         grid on;
         hold off;
     end
