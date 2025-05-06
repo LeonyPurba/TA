@@ -1,9 +1,9 @@
 function intensity_profile_gui()
     % Global variables
-    global origFolder gtFolder origFiles gtFiles hOrigList hGTList selectedOrig selectedGT;
+    global origFolder gtFolder origFiles gtFiles hOrigList hGTList selectedOrig selectedGT profile_data slope_data gui_fig;
 
     % Create figure
-    fig = figure('Name', 'Radial Intensity Profile Extractor', 'Position', [100, 100, 800, 500]);
+    gui_fig = figure('Name', 'Radial Intensity Profile Extractor', 'Position', [100, 100, 800, 500]);
 
     % Load Original Image Button
     uicontrol('Style', 'pushbutton', 'String', 'Load Original Images', ...
@@ -14,8 +14,12 @@ function intensity_profile_gui()
         'Position', [250, 450, 150, 30], 'Callback', @loadGTFolder);
 
     % Overlay Button
-    uicontrol('Style', 'pushbutton', 'String', 'Overlay', ...
+    uicontrol('Style', 'pushbutton', 'String', 'Overlay & Save', ...
         'Position', [650, 450, 100, 30], 'Callback', @runOverlay);
+
+    % CLEAR Button
+    uicontrol('Style', 'pushbutton', 'String', 'CLEAR', ...
+        'Position', [650, 50, 100, 30], 'Callback', @clearData);
 
     % Listbox for Original Images
     uicontrol('Style', 'text', 'String', 'Original Images:', ...
@@ -36,24 +40,26 @@ function intensity_profile_gui()
     % Initialize
     selectedOrig = '';
     selectedGT = '';
+    profile_data = [];
+    slope_data = [];
 end
 
 function loadOriginalFolder(~, ~)
     global origFolder origFiles hOrigList;
     origFolder = uigetdir('', 'Select Folder with Original Images');
     if origFolder ~= 0
-        origFiles = dir(fullfile(origFolder, '**', '*.png')); % <<< ini perubahannya (recursive search)
+        origFiles = dir(fullfile(origFolder, '**', '*.png'));
+        % Store the full paths in filenames for display
         filenames = {origFiles.name};
         set(hOrigList, 'String', filenames);
     end
 end
 
-
 function loadGTFolder(~, ~)
     global gtFolder gtFiles hGTList;
     gtFolder = uigetdir('', 'Select Folder with Ground Truth Masks');
     if gtFolder ~= 0
-        gtFiles = dir(fullfile(gtFolder, '*.png'));
+        gtFiles = dir(fullfile(gtFolder, '**', '*.png'));
         filenames = {gtFiles.name};
         set(hGTList, 'String', filenames);
     end
@@ -62,43 +68,66 @@ end
 function selectOrigFile(src, ~)
     global origFolder origFiles selectedOrig;
     idx = src.Value;
-    if isempty(origFiles)
+    if isempty(origFiles) || idx < 1 || idx > length(origFiles)
         return;
     end
-    selectedOrig = fullfile(origFolder, origFiles(idx).name);
+    % Use fullfile with folder and full path to ensure correct path
+    selectedOrig = fullfile(origFiles(idx).folder, origFiles(idx).name);
     showPreview(selectedOrig);
 end
 
 function selectGTFile(src, ~)
     global gtFolder gtFiles selectedGT;
     idx = src.Value;
-    if isempty(gtFiles)
+    if isempty(gtFiles) || idx < 1 || idx > length(gtFiles)
         return;
     end
-    selectedGT = fullfile(gtFolder, gtFiles(idx).name);
+    selectedGT = fullfile(gtFiles(idx).folder, gtFiles(idx).name);
     showPreview(selectedGT);
 end
 
 function showPreview(imgPath)
-    img = imread(imgPath);
-    if size(img,3) > 1
-        img = rgb2gray(img);
+    try
+        img = imread(imgPath);
+        if size(img,3) > 1
+            img = rgb2gray(img);
+        end
+        axesObjs = findall(gcf, 'type', 'axes');
+        axes(axesObjs(1));
+        imshow(img, []);
+    catch e
+        fprintf('Error loading image: %s\n', imgPath);
+        fprintf('Error message: %s\n', e.message);
     end
-    axesObjs = findall(gcf, 'type', 'axes');
-    axes(axesObjs(1));
-    imshow(img, []);
+end
+
+function clearData(~, ~)
+    % Close any existing figures except the main GUI
+    global gui_fig profile_data slope_data;
+    
+    % Get all open figures
+    all_figs = findall(0, 'Type', 'figure');
+    
+    % Close all figures except the main GUI
+    for i = 1:length(all_figs)
+        if all_figs(i) ~= gui_fig
+            close(all_figs(i));
+        end
+    end
+    
+    % Clear data variables
+    profile_data = [];
+    slope_data = [];
 end
 
 function runOverlay(~, ~)
-    global selectedOrig selectedGT;
+    global selectedOrig selectedGT profile_data slope_data gui_fig;
 
     if isempty(selectedOrig) || isempty(selectedGT)
         errordlg('Please select both an original image and a ground truth mask.', 'Selection Error');
         return;
     end
 
-    % ------------ Algoritma Profil Intensity Extraction--------------
-    
     % Load mask binary (GROUND TRUTH) untuk cari bounding box
     mask = imread(selectedGT);
     if size(mask,3) > 1
@@ -129,22 +158,23 @@ function runOverlay(~, ~)
     fprintf('Centroid pada gambar penuh: [%.2f, %.2f]\n', centroid);
 
     % Set Parameter Garis Radial
-    r = 40; % panjang garis profil
+    r = 45; % panjang garis profil
     num_lines = 30; % jumlah garis
     theta = linspace(0, 2*pi, num_lines + 1);
-    theta = theta(1:end-1); % hapus duplikat
-    selected_indices = [12, 22, 29];
-    colors = {'m', 'b', 'r'};
+    theta = theta(1:end-1); 
+    selected_indices = [3, 15, 23]; % masukkan garis yg mau di ekstrak
+    colors = {'m', 'c', 'b'};
 
     % Inisialisasi Profil
     profiles = cell(1, num_lines);
+    mask_profiles = cell(1, num_lines);
 
     % Plot Overlay di Gambar Asli
-    figure;
+    figure(1);
     imshow(I); hold on;
     title('Overlay Garis Profil Intensitas Radial');
 
-    % Tambahkan overlay dari mask
+    % Overlay dari mask
     h_mask = imshow(cat(3, zeros(size(mask)), mask, zeros(size(mask))));
     set(h_mask, 'AlphaData', 0.3 * double(mask));
 
@@ -161,7 +191,7 @@ function runOverlay(~, ~)
 
         idx_in_selected = find(selected_indices == i);
         if ~isempty(idx_in_selected)
-            color = colors{idx_in_selected};
+            color = colors{mod(idx_in_selected - 1, numel(colors)) + 1};
             lw = 2.5;
         else
             color = 'g';
@@ -174,12 +204,13 @@ function runOverlay(~, ~)
             text(x_end, y_end, sprintf('%d', i), 'Color', 'w', 'FontSize', 7, 'HorizontalAlignment', 'center');
         end
 
-        profiles{i} = improfile(I, [centroid(1), x_end], [centroid(2), y_end], 100);
+        profiles{i} = improfile(I, [centroid(1), x_end], [centroid(2), y_end], 150);
+        mask_profiles{i} = improfile(double(mask), [centroid(1), x_end], [centroid(2), y_end], 150);
     end
     hold off;
 
-    % Plot Semua Profil Intensitas
-    figure;
+    % Tampilkan Profil Intensitas
+    figure(2);
     hold on;
     for i = 1:num_lines
         if ~isempty(profiles{i})
@@ -192,23 +223,20 @@ function runOverlay(~, ~)
     grid on;
     hold off;
 
-    % Plot 3 Profil Terpilih
-    figure;
+    % Simpan data profil dan slope
+    profile_data = profiles;
+    slope_data = [];
     for i = 1:length(selected_indices)
-        subplot(3,1,i);
         idx = selected_indices(i);
-        plot(profiles{idx}, colors{i}, 'LineWidth', 2);
-        xlabel('Jarak Sepanjang Garis');
-        ylabel('Intensitas');
-        title(sprintf('Profil Intensitas Garis %d', idx));
-        axis([0 length(profiles{idx}) 20 100]);
+        edge_point = min(find(~mask_profiles{idx}));
+        x_range = 0:40; % 41 titik
+        y_range = profiles{idx}(edge_point-20 : edge_point+20);
+        
+        % Regressi Linear
+        p = polyfit(x_range, y_range', 1); % y = mx + c
+        slope_data(i) = p(1);
     end
 
-  % Untuk 1 gambar:
-  profile_data.theta = theta;        % 1xN array, semua sudut 
-  profile_data.rho = linspace(0, r, 100);  % 1x100 array (100 titik sampling)
-  profile_data.intensity = profiles; % 1xN cell, tiap cell: 100x1 array (profil intensitas tiap garis)
-  
- save('namafile.mat', 'profile_data');
-
+    % Menyimpan slope ke file Excel
+    writetable(array2table(slope_data'), 'slope_data.xlsx', 'WriteVariableNames', false);
 end
