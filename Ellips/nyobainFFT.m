@@ -1,6 +1,6 @@
 % === STEP 1: Buka file .fig ===
-%fig = openfig('C:\Users\Leony\Downloads\BIRADS2Nyobain.fig'); 
-fig = openfig('C:\Users\Leony\Downloads\BIRADS5Nyobain.fig'); 
+fig = openfig('C:\Users\Leony\Downloads\BIRADS2Nyobain.fig'); 
+%fig = openfig('C:\Users\Leony\Downloads\BIRADS5Nyobain.fig'); 
 ax = gca;  % ambil axis aktif
 lines = findall(ax, 'Type', 'Line');  % ambil semua data line di plot
 
