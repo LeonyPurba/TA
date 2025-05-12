@@ -31,11 +31,11 @@ Mask_image = '.\Resize\Resized\BIRADS_2\resized_mask_0191-r.png';
     fprintf('Centroid pada gambar penuh: [%.2f, %.2f]\n', centroid);
 
     % Set Parameter Garis Radial
-    r = 45; % panjang garis profil
+    r = 60; % panjang garis profil
     num_lines = 30; % jumlah garis
     theta = linspace(0, 2*pi, num_lines + 1);
     theta = theta(1:end-1); 
-    selected_indices = [1,5,25]; %masukin garis yg mau di ekstrak
+    selected_indices = [3,15,23]; %masukin garis yg mau di ekstrak
     colors = {'m', 'c', 'b'};
 
     % Inisialisasi Profil
