@@ -1,178 +1,65 @@
-function R = rescale(A, varargin)
-%RESCALE   Rescales the range of data.
-%   R = RESCALE(A) rescales all entries of an array A to [0,1].
-% 
-%   RESCALE(A,b,c) rescales all entries of A to the interval [b,c].
-%
-%   RESCALE(...,'InputMin',IMIN) sets the lower bound IMIN for the input 
-%   range. Input values less than IMIN will be replaced with IMIN. The  
-%   default is min(A(:)).
-%
-%   RESCALE(...,'InputMax',IMAX) sets the upper bound IMAX for the input 
-%   range. Input values greater than IMAX will be replaced with IMAX. The 
-%   default is max(A(:)).
-%
-%   Examples: 
-%
-%       % Rescale all entries of a vector to [0,1]
-%       a = [1 2 3 4 5];
-%       r = rescale(a)
-%
-%       % Clip all entries to [2,4] and then rescale all entries to [-1,1]
-%       a = [1 2 3 4 5];
-%       r = rescale(a,-1,1,'InputMin',2,'InputMax',4)
-%
-%       % Rescale each column of a matrix to the interval [0,1]
-%       A = magic(3);
-%       R = rescale(A,'InputMin',min(A),'InputMax',max(A))
-%
-%   See also MIN, MAX.
- 
-%   Copyright 2017-2020 The MathWorks, Inc.
+% Path gambar
+%Ori_image = '.\Raw_Image\BIRADS_2\bus_0191-r.png';
+%Mask_image = '.\Resize\Resized\BIRADS_2\resized_mask_0191-r.png';
 
-narginchk(1,inf);
+Ori_image = 'D:\TA\TA Kak chelli\Dataset yang dipakai\BIRADS_2\more 10\bus_0612-l.png';
+Mask_image = 'D:\Git Repo\TA\Edge Sharpness\Profile intensity\Resize\Resized\BIRADS_2\resized_mask_0612-l.png';
 
-% Process inputs
-[A, a, b, inputMin, inputMax] = preprocessInputs(A, varargin{:});
+% Baca gambar asli dan mask
+original = imread(Ori_image);
+mask = imread(Mask_image);
 
-% Quick return for empty inputs
-if isempty(A)
-    if ~isfloat(A)
-        R = double(A);
-    else
-        R = A;
-    end
-    return;
+% Resize mask ke ukuran gambar asli jika perlu
+if size(mask, 1) ~= size(original, 1) || size(mask, 2) ~= size(original, 2)
+    mask = imresize(mask, [size(original, 1), size(original, 2)]);
 end
 
-R = matlab.internal.math.rescaleKernel(A,a,b,inputMin,inputMax);
-
-end
-%--------------------------------------------------------------------------
-function [A, a, b, inputMin, inputMax] = preprocessInputs(A, varargin)
-% Parse RESCALE inputs
-
-% Process A
-if ~(isnumeric(A) || islogical(A)) || ~isreal(A)
-    error(message('MATLAB:rescale:InvalidA'));
+% Konversi mask ke grayscale jika RGB
+if size(mask, 3) > 1
+    mask = rgb2gray(mask);
 end
 
-% Set defaults
-a = 0;
-b = 1;
-minFlag = false;
-maxFlag = false;
-
-ndimsA = ndims(A);
-sizA = size(A);
-
-if ~isempty(varargin)
-    indStart = 1;
-    
-    % Parse output range
-    if isnumeric(varargin{1}) || islogical(varargin{1})
-        if 2 > length(varargin)
-            error(message('MATLAB:rescale:RequiredThirdInput'));
-        end
-        a = varargin{1};
-        b = varargin{2};
-        if ~isnumeric(a) || ~isreal(a)
-            error(message('MATLAB:rescale:InvalidOutputRange'));
-        end
-        if ~isnumeric(b) || ~isreal(b)
-            if rem(length(varargin),2) ~= 0
-                error(message('MATLAB:rescale:RequiredThirdInput'));
-            else
-                error(message('MATLAB:rescale:InvalidOutputRange'));
-            end
-        end
-        if nnz(a > b) > 0
-            error(message('MATLAB:rescale:OutMinGreaterThanOutMax'));
-        end
-        siza = size(a, 1:ndimsA);
-        if ndims(a) > ndimsA || ~all(siza == sizA | siza == 1) 
-            error(message('MATLAB:rescale:NumberDimsOut'));
-        end
-        sizb = size(b, 1:ndimsA);
-        if ndims(b) > ndimsA || ~all(sizb == sizA | sizb == 1) 
-            error(message('MATLAB:rescale:NumberDimsOut'));
-        end        
-        if ~isfloat(a)
-            a = double(a);
-        end
-        if ~isfloat(b)
-            b = double(b);
-        end
-        indStart = 3;
-    end
-    
-    % Parse name-value pairs
-    nvNames = ["InputMin", "InputMax"];
-    opts = struct;
-    for j = indStart:2:length(varargin)
-        name = varargin{j};
-        if j+1 > length(varargin)
-            error(message('MATLAB:rescale:KeyWithoutValue'));
-        elseif (~(ischar(name) && isrow(name)) && ~(isstring(name) && isscalar(name))) ...
-                || (isstring(name) && strlength(name) == 0)
-            error(message('MATLAB:rescale:ParseFlags'));
-        end
-        ind = startsWith(nvNames, name, 'IgnoreCase', true);
-        if nnz(ind) ~= 1
-            error(message('MATLAB:rescale:ParseFlags'));
-        end
-        opts.(nvNames{ind}) = varargin{j+1};
-    end
-    if isfield(opts, 'InputMin')
-        inputMin = opts.InputMin;
-        if ~(isnumeric(inputMin) || islogical(inputMin)) || ~isreal(inputMin)
-            error(message('MATLAB:rescale:InvalidInputMin'));
-        end
-        sizInputMin = size(inputMin, 1:ndimsA);
-        if ndims(inputMin) > ndimsA || ~all(sizInputMin == sizA | sizInputMin == 1)
-            error(message('MATLAB:rescale:NumberDimsInLower'));
-        end
-        minFlag = true;
-    end
-    if isfield(opts, 'InputMax')
-        inputMax = opts.InputMax;
-        if ~(isnumeric(inputMax) || islogical(inputMax)) || ~isreal(inputMax)
-            error(message('MATLAB:rescale:InvalidInputMax'));
-        end
-        sizInputMax = size(inputMax, 1:ndimsA);
-        if ndims(inputMax) > ndimsA || ~all(sizInputMax == sizA | sizInputMax == 1) 
-            error(message('MATLAB:rescale:NumberDimsInUpper'));
-        end
-        maxFlag = true;
-    end
+% Binarisasi mask jika belum
+if max(mask(:)) > 1
+    mask = imbinarize(mask);
+else
+    mask = logical(mask);
 end
 
-% Set input range if not set above
-if ~minFlag
-    inputMin = min(A(:));
-end
-if ~maxFlag
-    inputMax = max(A(:));
-end
-% Cast inputMin/inputMax to double if not double or single
-if ~isfloat(inputMin)
-    inputMin = double(inputMin);
-end
-if ~isfloat(inputMax)
-    inputMax = double(inputMax);
+% Cari centroid tumor
+stats = regionprops(mask, 'Centroid', 'Area');
+if isempty(stats)
+    error('Mask tidak memiliki objek.');
 end
 
-% Check to make sure min < max
-if nnz(inputMin > inputMax) > 0
-    error(message('MATLAB:rescale:MinGreaterThanMax'));
-end
+% Gunakan region dengan area terbesar
+[~, idx] = max([stats.Area]);
+centroid = stats(idx).Centroid;
+x_centroid = round(centroid(1));
+y_centroid = round(centroid(2));
 
-% Preprocess input range if needed
-if minFlag && ~isempty(inputMin)
-    A = max(A, inputMin, 'includenan');
-end
-if maxFlag && ~isempty(inputMax)
-    A = min(A, inputMax, 'includenan');
-end
+% Ukuran patch hasil akhir
+output_size = 384;
+zoom_factor = 2;
+half_crop = output_size / (2 * zoom_factor); % = 96
 
-end
+% Hitung koordinat crop di gambar asli
+x_min = round(x_centroid - half_crop);
+x_max = round(x_centroid + half_crop - 1);
+y_min = round(y_centroid - half_crop);
+y_max = round(y_centroid + half_crop - 1);
+
+% Koreksi jika crop keluar batas
+x_min = max(x_min, 1); x_max = min(x_max, size(original,2));
+y_min = max(y_min, 1); y_max = min(y_max, size(original,1));
+
+% Crop dan zoom
+cropped = original(y_min:y_max, x_min:x_max, :);
+zoomed = imresize(cropped, zoom_factor); % hasilnya 384x384
+
+% Simpan hasil
+%imwrite(zoomed, 'hasil_zoom_384A.png');
+
+% Tampilkan
+imshow(zoomed);
+title('Gambar Asli Diperbesar dengan Tumor di Tengah');

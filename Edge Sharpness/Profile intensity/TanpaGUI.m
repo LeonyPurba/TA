@@ -1,5 +1,8 @@
-Ori_image  = '.\Raw_Image\BIRADS_2\bus_0191-r.png';
-Mask_image = '.\Resize\Resized\BIRADS_2\resized_mask_0191-r.png';
+%Ori_image  = '.\Raw_Image\BIRADS_2\bus_0191-r.png';
+%Mask_image = '.\Resize\Resized\BIRADS_2\resized_mask_0191-r.png';
+
+Ori_image = 'D:\Git Repo\TA\Edge Sharpness\Profile intensity\hasil_zoom_384.png';
+Mask_image = 'D:\TA\TA Kak chelli\Mask\BIRADS_2\bus_0612-l_mask.png';
 
 % Load mask binary (GROUND TRUTH) untuk cari bounding box
     mask = imread(Mask_image);
@@ -17,7 +20,7 @@ Mask_image = '.\Resize\Resized\BIRADS_2\resized_mask_0191-r.png';
     if size(I,3) > 1
         I = rgb2gray(I);
     end
-
+i
     % Pastikan ukuran mask dan gambar asli sama
     if ~isequal(size(mask), size(I))
         mask = imresize(mask, size(I));
@@ -31,7 +34,7 @@ Mask_image = '.\Resize\Resized\BIRADS_2\resized_mask_0191-r.png';
     fprintf('Centroid pada gambar penuh: [%.2f, %.2f]\n', centroid);
 
     % Set Parameter Garis Radial
-    r = 60; % panjang garis profil
+    r = 150; % panjang garis profil
     num_lines = 30; % jumlah garis
     theta = linspace(0, 2*pi, num_lines + 1);
     theta = theta(1:end-1); 
